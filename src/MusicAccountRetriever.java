@@ -4,6 +4,7 @@ import futures.MusicAccountService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -34,12 +35,21 @@ public class MusicAccountRetriever {
         try {
             results = accountExecutor.invokeAll(generateImportTasks(accountIDs));
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            System.out.println("MusicAccountStatsManager was interrupted.");
+            Thread.currentThread().interrupt();
         }
 
-        for (Future<AmazonMusicAccount> result : results) {
-            //PARTICIPANTS: replace the following line.
-            accountList.add(new AmazonMusicAccount("Null", 0, "Null"));
+        if (results != null) {
+            for (Future<AmazonMusicAccount> result : results) {
+                try {
+                    accountList.add(result.get());  // Retrieve actual result
+                } catch (InterruptedException e) {
+                    System.out.println("MusicAccountStatsManager was interrupted.");
+                    Thread.currentThread().interrupt(); // Restore interrupted status
+                } catch (ExecutionException e) {
+                    System.out.println("ImportAccountTask threw an exception.");
+                }
+            }
         }
 
         accountExecutor.shutdown();
